@@ -2,25 +2,29 @@ import { Actor, Vector } from "excalibur";
 import { Resources } from "./resources.js";
 
 export class Hearts extends Actor {
-    heartActors = [];
-    currentHearts = 3;
+    #heartActors = [];
+    #currentHearts = 3;
 
     onInitialize(engine) {
         this.pos = new Vector(10, 10); // Top-left corner
         this.anchor = Vector.Zero;
     }
 
+    get currentHearts() {
+        return this.#currentHearts;
+    }
+
     resetHearts() {
-        this.currentHearts = 3;
+        this.#currentHearts = 3;
 
         // Removes old heart actors
-        for (let heart of this.heartActors) {
+        for (let heart of this.#heartActors) {
             heart.kill();
         }
 
-        this.heartActors = [];
+        this.#heartActors = [];
 
-        for (let i = 0; i < this.currentHearts; i++) {
+        for (let i = 0; i < this.#currentHearts; i++) {
             const heartSprite = Resources.Heart.toSprite();
             const heartActor = new Actor({
                 pos: new Vector(i * 20, 0),                                               // space between hearts
@@ -30,26 +34,26 @@ export class Hearts extends Actor {
             });
             heartActor.graphics.use(heartSprite);
             this.addChild(heartActor);
-            this.heartActors.push(heartActor);
+            this.#heartActors.push(heartActor);
         }
     }
 
     loseHeart(amount = 1) {
-        this.currentHearts -= amount;
-        this.currentHearts = Math.max(this.currentHearts, 0); // Prevent negative hearts
+        this.#currentHearts -= amount;
+        this.#currentHearts = Math.max(this.#currentHearts, 0); // Prevent negative hearts
 
         // Remove visual heart actors
-        while (this.heartActors.length > this.currentHearts) {
-            const heartToRemove = this.heartActors.pop();
+        while (this.#heartActors.length > this.#currentHearts) {
+            const heartToRemove = this.#heartActors.pop();
             heartToRemove.kill();
         }
 
-        return this.currentHearts === 0;
+        return this.#currentHearts === 0;
     }
 
     addHeart() {
-        if (this.currentHearts < 3) {
-            this.currentHearts++;
+        if (this.#currentHearts < 3) {
+            this.#currentHearts++;
 
             if (this.scene) {           //  Only update visuals if still in a scene
                 this.updateHearts();
@@ -62,13 +66,13 @@ export class Hearts extends Actor {
 
     updateHearts() {
         // Removes all old hearts
-        for (let heart of this.heartActors) {
+        for (let heart of this.#heartActors) {
             heart.kill();
         }
 
-        this.heartActors = [];
+        this.#heartActors = [];
 
-        for (let i = 0; i < this.currentHearts; i++) {
+        for (let i = 0; i < this.#currentHearts; i++) {
             const heartSprite = Resources.Heart.toSprite();
             const heartActor = new Actor({
                 pos: new Vector(i * 20, 0),
@@ -78,20 +82,20 @@ export class Hearts extends Actor {
             });
             heartActor.graphics.use(heartSprite);
             this.addChild(heartActor);
-            this.heartActors.push(heartActor);
+            this.#heartActors.push(heartActor);
         }
     }
 
     showHearts(amount) {
         this.resetHearts();
-        while (this.heartActors.length > amount) {
-            const heart = this.heartActors.pop();
+        while (this.#heartActors.length > amount) {
+            const heart = this.#heartActors.pop();
             heart.kill();
         }
     }
 
     onPostUpdate(engine, delta) {
-        if (this.heartActors.length === 0) {
+        if (this.#heartActors.length === 0) {
             this.resetHearts();
         }
     }

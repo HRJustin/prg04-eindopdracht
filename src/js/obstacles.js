@@ -1,6 +1,8 @@
 import { Actor, Vector, Color, CollisionType, Shape } from "excalibur";
 
 export class Obstacle extends Actor {
+    #damage;
+    
     constructor(x, y, width = 30, height = 30, color = Color.Red) {
         super({
             pos: new Vector(x, y),
@@ -12,7 +14,16 @@ export class Obstacle extends Actor {
 
         this.name = "obstacle";
         this.isObstacle = true; // Tags for inheritance classes (Collision => gameoverscene fix.)
-        this.damage = 1;
+        this.#damage = 1;
+    }
+
+    get damage() {
+        return this.#damage;
+    }
+
+    // Accessible by subclasses
+    setDamage(value) {
+        this.#damage = value;
     }
 
     onInitialize(engine) {
@@ -32,7 +43,7 @@ export class RedBarrel extends Obstacle {
     constructor(x, y) {
         super(x, y, 30, 30, Color.Red);
         this.name = "red-barrel";
-        this.damage = 2
+        this.setDamage(2);
     }
 }
 

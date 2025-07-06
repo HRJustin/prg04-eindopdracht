@@ -2,13 +2,14 @@ import { Actor, Vector, Color, CollisionType, Shape, Component, ColliderComponen
 
 // Left movement component
 class MovementComponent extends Component {
+  #speed;
   constructor(speed = -100) {
     super("movement");
-    this.speed = speed;
+    this.#speed = speed;
   }
 
   onPreUpdate(engine, delta) {
-    this.owner.pos.x += this.speed * (delta / 1000);
+    this.owner.pos.x += this.#speed * (delta / 1000);
     // console.log("Movement running", this.owner.pos.x);                                  // Debugging
   }
 
@@ -19,17 +20,19 @@ class MovementComponent extends Component {
 
 // Hover effect component
 class HoverComponent extends Component {
-  constructor(amplitude = 20, speed = 2, initialY = 0) {
+  #amplitude;
+  #speed;
+  #time = 0;
+
+  constructor(amplitude = 20, speed = 2) {
     super("hover");
-    this.amplitude = amplitude;
-    this.speed = speed;
-    this.time = 0;
-    this.initialY = initialY;
+    this.#amplitude = amplitude;
+    this.#speed = speed;
   }
 
   onPreUpdate(engine, delta) {
-    this.time += delta / 1000;
-    const offsetY = Math.sin(this.time * this.speed) * this.amplitude;
+    this.#time += delta / 1000;
+    const offsetY = Math.sin(this.#time * this.#speed) * this.#amplitude;
     this.owner.pos.y = this.owner.originalY + offsetY;
     // console.log("Hover running", this.owner.pos.y);                                     // Debugging
   }

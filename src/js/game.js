@@ -12,6 +12,21 @@ import { Hearts } from "./hearts.js";
 import { Medpack } from "./medpack.js";
 
 export class Game extends Engine {
+    // Score
+    #score = 0;
+    #elapsedTime = 0;
+    #scoreLabel = null;
+
+    // Platforms, obstacles and background
+    #platforms = [];
+    #obstacles = [];
+    #backgroundColor = Color.White;
+
+    #player = null;
+    #hearts = null;
+
+    #gameScene = new Scene();
+
     constructor() {
         super({
             width: 800,
@@ -24,19 +39,8 @@ export class Game extends Engine {
             }
         })
 
-        // Score
-        this.score = 0;
-        this.elapsedTime = 0;
-        this.scoreLabel = null;
-
-        // Platforms, obstacles and background
-        this.platforms = []
-        this.obstacles = []
-        this.backgroundColor = Color.White
         this.add("gameover", new GameOverScene());
-
-        this.gameScene = new Scene();
-        this.add("game", this.gameScene);
+        this.add("game", this.#gameScene);
 
         this.showDebug(true);                                                       // For Debugging
 
@@ -47,21 +51,34 @@ export class Game extends Engine {
 
     }
 
+    get score() {
+        return this.#score;
+    }
+
+    get player() {
+        return this.#player;
+    }
+
+    get hearts() {
+        return this.#hearts;
+    }
+
     startGame() {
         this.goToScene("game");
         console.log("Going to scene:", this.currentScene);                          // Debugging
 
-        const scene = this.gameScene;
+        const scene = this.#gameScene;
         scene.actors.forEach(actor => actor.kill());                                // Clears all actors from previous game
 
-        this.platforms = [];
-        this.obstacles = [];
+        this.#platforms = [];
+        this.#obstacles = [];
 
         const bg1 = new Background(Resources.Background.toSprite(), 400, 300);
         const bg2 = new Background(Resources.Background.toSprite(), 1200, 300);
         scene.add(bg1);
         scene.add(bg2);
 
+        // Platforms
         const platformWidth = 150;
         const platformHeight = 20;
         const platformY = 580;
@@ -70,22 +87,22 @@ export class Game extends Engine {
         for (let i = 0; i < 12; i++) {
             const platform = new Platform(x + platformWidth / 2, platformY, platformWidth, platformHeight);
             scene.add(platform);
-            this.platforms.push(platform);
+            this.#platforms.push(platform);
             x += platformWidth;
         }
 
-        this.player = new Player(200, 510);
-        scene.add(this.player);
+        this.#player = new Player(200, 510);
+        scene.add(this.#player);
 
         // Player Hearts
-        this.hearts = new Hearts();
-        scene.add(this.hearts);
-        this.hearts.resetHearts();                                               // Resets to 3 hearts
+        this.#hearts = new Hearts();
+        scene.add(this.#hearts);
+        this.#hearts.resetHearts();                                               // Resets to 3 hearts
 
-        this.score = 0;
-        this.elapsedTime = 0;
+        this.#score = 0;
+        this.#elapsedTime = 0;
 
-        this.scoreLabel = new Label({
+        this.#scoreLabel = new Label({
             text: "Score: 0",
             pos: new Vector(20, 20),
             font: new Font({
@@ -97,27 +114,22 @@ export class Game extends Engine {
             anchor: new Vector(0, 0)
         });
 
-        scene.add(this.scoreLabel);
+        scene.add(this.#scoreLabel);
     }
 
     onPreUpdate(engine, delta) {
         const scene = engine.currentScene;
 
-        if (this.platforms.length > 0) {
-            // Adjusts platform speed based on score
-            // for (let platform of this.platforms) {
-            //     platform.speed = 150 + this.score * 2;                // Increases speed as score goes up
-            // }
+        if (this.#platforms.length > 0) {
+            const platformSpeed = 100 + this.score * 2;                              // Increases speed as score goes up
 
-            const platformSpeed = 100 + this.score * 2;
-
-            for (let platform of this.platforms) {
+            for (let platform of this.#platforms) {
                 platform.speed = platformSpeed;
                 platform.pos.x -= (platform.speed * delta) / 1000;
             }
 
             // Safely get the rightmost platform using reduce
-            let rightmostPlatform = this.platforms.reduce((rightmost, p) => {
+            let rightmostPlatform = this.#platforms.reduce((rightmost, p) => {
                 const rightEdge = p.pos.x + p.width / 2;
                 const currentRightEdge = rightmost.pos.x + rightmost.width / 2;
                 return rightEdge > currentRightEdge ? p : rightmost;
@@ -128,7 +140,7 @@ export class Game extends Engine {
             // Move and recycle platforms
             let recycledThisFrame = [];
 
-            for (let platform of this.platforms) {
+            for (let platform of this.#platforms) {
                 platform.pos.x -= (platform.speed * delta) / 1000;
 
                 if (platform.pos.x + platform.width / 2 < 0) {
@@ -154,7 +166,7 @@ export class Game extends Engine {
 
                     recycledPlatform.addChild(obstacle);
                     // console.log("Spawned obstacle at relative pos", obstacle.pos);         // Debugging
-                    this.obstacles.push(obstacle);
+                    this.#obstacles.push(obstacle);
                     // console.log("Added obstacle:", obstacle, "child of", obstacle.parent); // Debugging
                 }
 
@@ -169,19 +181,24 @@ export class Game extends Engine {
         // Flying enemies
         if (Math.random() < 0.005) {
             const bird = new Bird(800, 330 + Math.random() * 60);
-            this.gameScene.add(bird);
+            this.#gameScene.add(bird);
             console.log("Spawned a bird at", bird.pos.toString());
         }
 
         // Clean up dead obstacles
-        this.obstacles = this.obstacles.filter(obstacle => !obstacle.isKilled());
+        this.#obstacles = this.#obstacles.filter(obstacle => !obstacle.isKilled());
 
         // Update score only if label is active
-        if (this.scoreLabel) {
-            this.elapsedTime += delta;
-            const seconds = Math.floor(this.elapsedTime / 1000);
-            this.score = seconds;
-            this.scoreLabel.text = `Score: ${this.score}`;
+        if (this.#scoreLabel) {
+            this.#elapsedTime += delta;
+            const seconds = Math.floor(this.#elapsedTime / 1000);
+            this.#score = seconds;
+            this.#scoreLabel.text = `Score: ${this.score}`;
+        }
+
+        // Trigger game over when out of hearts
+        if (this.#hearts && this.#hearts.currentHearts <= 0) {
+            this.goToScene("gameover", { score: this.#score });
         }
     }
 }
