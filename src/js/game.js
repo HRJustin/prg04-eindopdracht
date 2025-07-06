@@ -168,7 +168,7 @@ export class Game extends Engine {
 
         // Flying enemies
         if (Math.random() < 0.005) {
-            const bird = new Bird(800, 120 + Math.random() * 60);
+            const bird = new Bird(800, 330 + Math.random() * 60);
             this.gameScene.add(bird);
             console.log("Spawned a bird at", bird.pos.toString());
         }
