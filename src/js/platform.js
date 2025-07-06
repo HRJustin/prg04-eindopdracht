@@ -1,4 +1,4 @@
-import { Actor, Vector, Color, CollisionType } from "excalibur"
+import { Actor, Vector, Color, CollisionType, Shape } from "excalibur"
 
 export class Platform extends Actor {
     constructor(x, y, width, height) {
@@ -12,6 +12,11 @@ export class Platform extends Actor {
 
         this.speed = 100 // pixels per second to the left
 
-        this.collider.useBoxCollider(width, height)
+        // this.collider.useBoxCollider(width, height)
+    }
+
+    onInitialize() {
+        const shape = Shape.Box(this.width, this.height, Vector.Zero);
+        this.collider.set(shape);
     }
 }

@@ -105,7 +105,7 @@ export class GameOverScene extends Scene {
         this.label.pos = new Vector(centerX, centerY - 60);
         this.scoreLabel.pos = new Vector(centerX, centerY);
         console.log("Score label position:", this.scoreLabel.pos);            // Debugging
-        console.log("Current scene name:", context.engine.currentScene.name); // Debugging
+        console.log("Current scene name:", context.engine.currentScene);      // Debugging
         this.prompt.pos = new Vector(centerX, centerY + 60);
 
         // Shows final score
@@ -119,8 +119,8 @@ export class GameOverScene extends Scene {
         }
 
         // Defines and stores the new listener
-        this._spaceListener = (evt) => {
-            if (evt.key === Keys.Space) {
+        this._spaceListener = (event) => {
+            if (event.key === Keys.Space) {
                 engine.startGame();
             }
         };

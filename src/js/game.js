@@ -3,10 +3,13 @@ import { Actor, Engine, Vector, DisplayMode, Color, CollisionType, SolverStrateg
 import { Resources, ResourceLoader } from './resources.js'
 import { Background } from './background.js'
 import { Platform } from "./platform.js"
-import { Obstacle } from "./obstacles.js";
+import { Obstacle, RedBarrel, GreenBarrel } from "./obstacles.js";
 import { Player } from "./player.js";
 import { Leaderboard } from "./leaderboard.js";
 import { GameOverScene } from "./gameOverScene.js";
+import { Bird } from "./enemies.js";
+import { Hearts } from "./hearts.js";
+import { Medpack } from "./medpack.js";
 
 export class Game extends Engine {
     constructor() {
@@ -46,10 +49,10 @@ export class Game extends Engine {
 
     startGame() {
         this.goToScene("game");
-        console.log("Going to scene:", this.currentScene.name);                     // Debugging
+        console.log("Going to scene:", this.currentScene);                          // Debugging
 
         const scene = this.gameScene;
-        scene.actors.forEach(actor => actor.kill()); // Clears all actors from previous game
+        scene.actors.forEach(actor => actor.kill());                                // Clears all actors from previous game
 
         this.platforms = [];
         this.obstacles = [];
@@ -62,38 +65,22 @@ export class Game extends Engine {
         const platformWidth = 150;
         const platformHeight = 20;
         const platformY = 580;
-        const playerY = 510;
         let x = 0;
 
-        for (let i = 0; i < 10; i++) {
-            const createPlatform = Math.random() > 0.01;
-
-            if (createPlatform) {
-                const platform = new Platform(x + platformWidth / 2, platformY, platformWidth, platformHeight);
-                scene.add(platform);
-                this.platforms.push(platform);
-                x += platformWidth;
-            } else {
-                const gapWidth = Math.random() * (100 - 60) + 60;
-                x += gapWidth;
-            }
+        for (let i = 0; i < 12; i++) {
+            const platform = new Platform(x + platformWidth / 2, platformY, platformWidth, platformHeight);
+            scene.add(platform);
+            this.platforms.push(platform);
+            x += platformWidth;
         }
 
-        this.player = new Player(200, playerY);
+        this.player = new Player(200, 510);
         scene.add(this.player);
 
-        this.player.on("collisionstart", (evt) => {
-            console.log("Collision listener triggered");                      // Debugging
-            // console.log("Player collision with:", evt.other);              // For Debugging Collision
-            if (evt.other instanceof Obstacle) {
-                const finalScore = this.score;
-                const gameOverScene = this.scenes.gameover;
-                // gameOverScene.showFinalScore(finalScore);
-                console.log("Switching to gameover with score:", this.score); // Debugging
-                this.goToScene("gameover", { score: this.score });
-                console.log("Going to scene:", this.currentScene.name);       // Debugging
-            }
-        });
+        // Player Hearts
+        this.hearts = new Hearts();
+        scene.add(this.hearts);
+        this.hearts.resetHearts();                                               // Resets to 3 hearts
 
         this.score = 0;
         this.elapsedTime = 0;
@@ -114,47 +101,86 @@ export class Game extends Engine {
     }
 
     onPreUpdate(engine, delta) {
-        let scene = engine.currentScene;
-        let rightmostX = Math.max(...this.platforms.map(p => p.pos.x + p.width / 2)) // Tracks rightmost platform
-        let rightmostPlatform = this.platforms.find(p => p.pos.x === rightmostX)
+        const scene = engine.currentScene;
 
-        for (let platform of this.platforms) {
-            platform.pos.x -= (platform.speed * delta) / 1000
+        if (this.platforms.length > 0) {
+            // Adjusts platform speed based on score
+            // for (let platform of this.platforms) {
+            //     platform.speed = 150 + this.score * 2;                // Increases speed as score goes up
+            // }
 
-            if (platform.pos.x + platform.width / 2 < 0) {
-                const createGap = Math.random() < 0.30
-                const minGap = 60
-                const maxGap = 100
-                const gap = createGap ? Math.random() * (maxGap - minGap) + minGap : 0
+            const platformSpeed = 100 + this.score * 2;
 
-                platform.pos.x = rightmostX + platform.width + gap
-                rightmostX = platform.pos.x
-                rightmostPlatform = platform // updates the rightmost platform reference
+            for (let platform of this.platforms) {
+                platform.speed = platformSpeed;
+                platform.pos.x -= (platform.speed * delta) / 1000;
+            }
 
-                // platform.pos.x = rightmostX + gap + platform.width / 2 // Moves platform to the right of the rightmost platform + gap
-                // rightmostX = platform.pos.x + platform.width / 2       // Updates rightmostX if this platform is placed
+            // Safely get the rightmost platform using reduce
+            let rightmostPlatform = this.platforms.reduce((rightmost, p) => {
+                const rightEdge = p.pos.x + p.width / 2;
+                const currentRightEdge = rightmost.pos.x + rightmost.width / 2;
+                return rightEdge > currentRightEdge ? p : rightmost;
+            });
+
+            let rightmostX = rightmostPlatform.pos.x + rightmostPlatform.width / 2;
+
+            // Move and recycle platforms
+            let recycledThisFrame = [];
+
+            for (let platform of this.platforms) {
+                platform.pos.x -= (platform.speed * delta) / 1000;
+
+                if (platform.pos.x + platform.width / 2 < 0) {
+                    platform.pos.x = rightmostX + platform.width / 2;
+                    rightmostX = platform.pos.x + platform.width / 2;
+
+                    recycledThisFrame.push(platform);                                         // Tracks recycled platform
+                }
+            }
+
+            // Add obstacle on the recycled platform
+            for (let recycledPlatform of recycledThisFrame) {
+                if (Math.random() < 0.2) {                                                    // Adjust spawn rate here
+                    const obstacleX = 0;
+                    const obstacleY = - 30;
+                    let obstacle;
+
+                    if (Math.random() < 0.5) {
+                        obstacle = new RedBarrel(obstacleX, obstacleY);
+                    } else {
+                        obstacle = new GreenBarrel(obstacleX, obstacleY);
+                    }
+
+                    recycledPlatform.addChild(obstacle);
+                    // console.log("Spawned obstacle at relative pos", obstacle.pos);         // Debugging
+                    this.obstacles.push(obstacle);
+                    // console.log("Added obstacle:", obstacle, "child of", obstacle.parent); // Debugging
+                }
+
+                if (Math.random() < 0.20) {                                                   // X% chance
+                    const medpack = new Medpack(50, -30);                                     // Position relative to platform
+                    recycledPlatform.addChild(medpack);
+                    console.log("Spawned a medpack at", medpack.pos.toString());
+                }
             }
         }
 
-        if (Math.random() < 0.50 && rightmostPlatform) {
-            const obstacleX = rightmostPlatform.pos.x
-            const obstacleY = rightmostPlatform.pos.y - 30       // sits on top
-            const obstacle = new Obstacle(obstacleX, obstacleY)
-
-            scene.add(obstacle);
-            if (this.currentScene.actors.includes(obstacle)) {
-                this.obstacles.push(obstacle);
-            }
+        // Flying enemies
+        if (Math.random() < 0.005) {
+            const bird = new Bird(800, 120 + Math.random() * 60);
+            this.gameScene.add(bird);
+            console.log("Spawned a bird at", bird.pos.toString());
         }
-        this.obstacles = this.obstacles.filter(o => !o.isKilled());
 
-        // Update score
-        this.elapsedTime += delta;
+        // Clean up dead obstacles
+        this.obstacles = this.obstacles.filter(obstacle => !obstacle.isKilled());
 
-        const seconds = Math.floor(this.elapsedTime / 1000);
-        this.score = seconds;
-
+        // Update score only if label is active
         if (this.scoreLabel) {
+            this.elapsedTime += delta;
+            const seconds = Math.floor(this.elapsedTime / 1000);
+            this.score = seconds;
             this.scoreLabel.text = `Score: ${this.score}`;
         }
     }
